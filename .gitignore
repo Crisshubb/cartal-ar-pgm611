@@ -1,0 +1,25 @@
+# Archivos generados por Unity
+**/[Ll]ibrary/
+**/[Tt]emp/
+**/[Oo]bj/
+**/[Ll]ogs/
+**/UserSettings/
+**/[Bb]uilds/
+*.csproj
+*.sln
+*.slnx
+*.user
+.vs/
+# Entregas y herramientas de trabajo locales
+/Entrega/
+/logs/
+/cache-gradle/
+/cache-upm/
+/Temp/
+/Colaboracion/
+/Presentacion/build/
+/Documentacion/build/
+**/node_modules/
+**/__pycache__/
+*.apk
+*.aab
