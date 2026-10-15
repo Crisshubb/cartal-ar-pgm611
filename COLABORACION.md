@@ -79,5 +79,13 @@ No subir Library, cachés, instaladores ni APK en los commits de código.
 
 ## Invitaciones
 
-Crisshubb es el propietario. Se enviaron invitaciones a Alexwuuu1 y Galileya.
-La cuenta exacta del cuarto integrante se verifica con él antes de añadirla.
+Crisshubb es el propietario. Cuentas confirmadas del grupo:
+
+| Integrante | Cuenta GitHub |
+| --- | --- |
+| Cristopher | Crisshubb |
+| Alejandro | Alexwuuu1 |
+| Galilea | Galileya |
+| Alex Joel | lpzealexjoelquispeti-dot |
+
+Los tres colaboradores deben aceptar su invitación para subir sus ramas al repositorio.
