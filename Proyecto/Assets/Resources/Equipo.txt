@@ -1,0 +1,17 @@
+INTEGRANTES
+
+Cristopher Iori Lazcano Gutierrez
+Rol: Programación y coordinación
+
+Alejandro Villalpando Rojas
+Rol: Arte e interfaz
+
+Galilea Alison Llusco Asistiri
+Rol: Documentación y presentación
+
+Alex Joel Quispe Ticona
+Rol: Pruebas en Android y AR
+
+Carrera: Ingeniería de Sistemas
+Universidad: Universidad Privada Franz Tamayo
+UNIFRANZ - Sede La Paz, Bolivia
