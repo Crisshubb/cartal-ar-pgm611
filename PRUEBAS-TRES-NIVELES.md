@@ -2,7 +2,7 @@
 
 Fecha: 16 de octubre de 2026. Unity 6000.3.11f1, Windows.
 
-- 47 comprobaciones aprobadas mediante `PruebasCartal.Ejecutar` en Play Mode.
+- 49 comprobaciones aprobadas mediante `PruebasCartal.Ejecutar` en Play Mode.
 - Regresión de la cripta: selección, rechazo de tercera carta, parejas, animación, récord y reinicio.
 - Selector de PC, ocho parejas del tesoro, seis de la biblioteca y acceso en cualquier orden.
 - Desactivación de cartas sobrantes al cambiar a un tablero menor.
@@ -16,7 +16,7 @@ Fecha: 16 de octubre de 2026. Unity 6000.3.11f1, Windows.
 
 ## Pendiente en Android
 
-Esta revisión no incluye APK nuevo ni prueba en un teléfono. El editor de esta PC tiene instalado el módulo Windows. La validación en PC no verifica la estabilidad física de un anclaje AR.
+Se generó el APK 0.3.0 con soporte ARMv7 y ARM64, firma v2 verificada y ARCore opcional. Se añadieron pruebas del selector sin cámara y de la desactivación de ARCameraManager. Falta una prueba en teléfono: la validación en PC no verifica la estabilidad física de un anclaje AR. Consultar ANDROID.md.
 
 En un celular compatible, comprobar:
 

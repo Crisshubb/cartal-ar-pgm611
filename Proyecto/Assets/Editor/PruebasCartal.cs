@@ -66,6 +66,13 @@ public static class PruebasCartal
                     Captura("Cartal-AcercaDe.png");
                     juego.acercaDe.GetComponentInChildren<Button>().onClick.Invoke();
                     Exigir(juego.menu.activeSelf && !juego.acercaDe.activeSelf, "volver desde Acerca de");
+                    juego.menu.SetActive(false);
+                    juego.modos.SetActive(true);
+                    Captura("Cartal-Modos.png");
+                    juego.modos.GetComponentsInChildren<Button>().First(b => b.name == "JUGAR SIN CAMARA").onClick.Invoke();
+                    Exigir(juego.selector.activeSelf && !juego.modos.activeSelf && !juego.realidadAumentada.usarAR, "modo sin cámara abre selector sin AR");
+                    Exigir(!juego.realidadAumentada.camara.GetComponent<UnityEngine.XR.ARFoundation.ARCameraManager>().enabled, "cámara AR desactivada en modo normal");
+                    juego.VolverAlMenu();
                     Captura("Cartal-Menu.png");
                     juego.menu.GetComponentsInChildren<Button>().First(b => b.name == "JUGAR").onClick.Invoke();
                     Exigir(juego.selector.activeSelf && !juego.jugando, "Jugar abre selector PC");

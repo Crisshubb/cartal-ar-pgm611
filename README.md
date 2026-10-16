@@ -4,6 +4,8 @@
 
 La cripta conserva cuatro parejas; la biblioteca añade seis y el tesoro ocho. Los niveles se pueden completar en cualquier orden, con sellos y récords independientes. En Android cada imagen descubre su nivel y Fijar tablero permite seguir jugando sin mantener el marcador visible. Consultar [las tres imágenes y sus instrucciones](Imagenes-AR/LEEME.md).
 
+El modo **Jugar sin cámara** permite elegir los tres niveles en Android sin ARCore. **Explorar con cámara** comprueba la compatibilidad antes de iniciar. Consultar [requisitos y ajustes Android](ANDROID.md).
+
 ## Descargas de la versión anterior (0.2.1, un nivel)
 
 - [Android: descargar APK 0.2.1](https://github.com/Crisshubb/cartal-ar-pgm611/releases/download/v0.2.1/Cartal-Android-0.2.1.apk) — realidad aumentada en un celular compatible.

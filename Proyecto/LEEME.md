@@ -8,7 +8,8 @@ Abre esta carpeta como proyecto de Unity y abre `Assets/Escenas/Cartal.unity`.
 Presiona Play. En PC, Jugar abre un selector de tres niveles que funcionan con el mouse.
 La vista PC sirve para comprobar las reglas; **la realidad aumentada funciona en Android**.
 
-En Android, abre Cartal, pulsa Jugar y concede el permiso de cámara.
+En Android, pulsa Jugar y elige **Jugar sin cámara** o **Explorar con cámara**.
+El primer modo no necesita ARCore. El segundo comprueba compatibilidad y solicita permiso de cámara.
 Enfoca una de las tres imágenes de `../Imagenes-AR/`, impresa o abierta en otra pantalla.
 La cripta tiene cuatro parejas; la biblioteca, seis; y el tesoro, ocho.
 Se pueden completar en cualquier orden. Al ganar se obtiene un sello y se puede repetir o buscar otro.

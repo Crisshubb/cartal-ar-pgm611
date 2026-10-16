@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -16,6 +17,11 @@ public class MostrarTableroAR : MonoBehaviour
     public JuegoMemoria juego;
     public Button fijar, reubicar;
     public bool escaneando;
+    public bool usarAR;
+    public bool EsAR => Application.platform == RuntimePlatform.Android && usarAR;
+    private int consulta;
+    private bool consultando;
+    private float inicioConsulta;
     public bool Fijado => ancla != null || fijadoPC;
     public bool buscandoNivel { get; private set; }
     private Transform contenedorOriginal;
@@ -23,15 +29,51 @@ public class MostrarTableroAR : MonoBehaviour
     private bool fijadoPC, creandoAncla, visibleAnterior;
     private int operacion;
     private TrackableId? imagenActual;
-    private bool Android => Application.platform == RuntimePlatform.Android;
+    private bool Android => EsAR;
 
     private void Awake() => contenedorOriginal = tablero.transform.parent;
+
+    private void CamaraAR(bool activa)
+    {
+        camara.GetComponent<ARCameraManager>().enabled = activa;
+        camara.GetComponent<ARCameraBackground>().enabled = activa;
+        camara.GetComponent<UnityEngine.SpatialTracking.TrackedPoseDriver>().enabled = activa;
+        camara.orthographic = !activa;
+    }
+
+    public void ComprobarCompatibilidad()
+    {
+        if (consultando) return;
+        consultando = true;
+        inicioConsulta = Time.realtimeSinceStartup;
+        juego.estadoAR.text = "COMPROBANDO COMPATIBILIDAD...";
+        juego.botonAR.interactable = false;
+        StartCoroutine(ConsultarAR(++consulta));
+    }
+
+    private IEnumerator ConsultarAR(int solicitud)
+    {
+        yield return ARSession.CheckAvailability();
+        if (solicitud != consulta) yield break;
+        if (ARSession.state == ARSessionState.NeedsInstall)
+        {
+            juego.estadoAR.text = "INSTALA LOS SERVICIOS DE GOOGLE PLAY PARA RA";
+            yield return ARSession.Install();
+        }
+        if (solicitud != consulta) yield break;
+        consultando = false;
+        juego.botonAR.interactable = true;
+        if (ARSession.state == ARSessionState.Ready || ARSession.state == ARSessionState.SessionInitializing || ARSession.state == ARSessionState.SessionTracking)
+            juego.IniciarExploracionAR();
+        else juego.estadoAR.text = "AR NO DISPONIBLE / PUEDES JUGAR SIN CAMARA";
+    }
 
     public void BuscarNivel()
     {
         Detener();
         buscandoNivel = true;
         escaneando = true;
+        CamaraAR(Android);
         if (Android) { sesion.enabled = true; imagenes.enabled = true; anclas.enabled = true; }
         juego.mensaje.text = "ENFOCA UNA DE LAS TRES IMAGENES";
         juego.reloj.text = "TIEMPO --:--.--";
@@ -49,6 +91,7 @@ public class MostrarTableroAR : MonoBehaviour
         }
         else Detener();
         escaneando = true;
+        CamaraAR(Android);
         if (Android)
         {
             sesion.enabled = true;
@@ -59,7 +102,7 @@ public class MostrarTableroAR : MonoBehaviour
         else
         {
             camara.orthographic = true;
-            camara.orthographicSize = 2.85f;
+            camara.orthographicSize = Mathf.Max(2.85f, 2.05f / camara.aspect);
             camara.transform.localPosition = new Vector3(0, 0, -8);
             camara.transform.localRotation = Quaternion.identity;
             tablero.transform.SetParent(contenedorOriginal, false);
@@ -67,7 +110,7 @@ public class MostrarTableroAR : MonoBehaviour
             tablero.transform.localRotation = Quaternion.identity;
             tablero.transform.localScale = Vector3.one;
             tablero.SetActive(true);
-            juego.mensaje.text = "VISTA PC / ENCUENTRA LAS PAREJAS";
+            juego.mensaje.text = "ENCUENTRA LAS PAREJAS";
         }
         ActualizarBotones();
     }
@@ -92,6 +135,8 @@ public class MostrarTableroAR : MonoBehaviour
 
     public void Detener()
     {
+        consulta++;
+        consultando = false;
         escaneando = false;
         buscandoNivel = false;
         Liberar();
@@ -100,6 +145,7 @@ public class MostrarTableroAR : MonoBehaviour
         imagenes.enabled = false;
         anclas.enabled = false;
         sesion.enabled = false;
+        CamaraAR(false);
         ActualizarBotones();
     }
 
@@ -166,12 +212,21 @@ public class MostrarTableroAR : MonoBehaviour
 
     private void ActualizarBotones()
     {
+        if (fijar != null) fijar.gameObject.SetActive(Android || !Application.isMobilePlatform);
+        if (reubicar != null) reubicar.gameObject.SetActive(Android || !Application.isMobilePlatform);
         if (fijar != null) fijar.interactable = escaneando && !buscandoNivel && tablero.activeSelf && !Fijado && !creandoAncla;
         if (reubicar != null) reubicar.interactable = escaneando && !buscandoNivel && !creandoAncla;
     }
 
     private void Update()
     {
+        if (consultando && Time.realtimeSinceStartup - inicioConsulta > 45)
+        {
+            consulta++;
+            consultando = false;
+            juego.botonAR.interactable = true;
+            juego.estadoAR.text = "NO SE PUDO ACTIVAR AR / REINTENTA O JUEGA SIN CAMARA";
+        }
         if (Input.GetKeyDown(KeyCode.Escape)) juego.VolverAlMenu();
         if (!escaneando) return;
         if (Android) ActualizarImagen();

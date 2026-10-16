@@ -16,6 +16,9 @@ public class JuegoMemoria : MonoBehaviour
     public NivelCartal[] niveles;
     public int nivelActual;
     public GameObject selector;
+    public GameObject modos;
+    public Text estadoAR;
+    public Button botonAR;
     public Text progreso, tituloNivel, tituloVictoria;
     public Text[] resumenNiveles;
     public SpriteRenderer fondoTablero, premio;
@@ -52,7 +55,7 @@ public class JuegoMemoria : MonoBehaviour
 
     private void Start() // Unity llama a este método al iniciar la escena.
     {
-        Application.targetFrameRate = 60; // Limita la ejecución a 60 imágenes por segundo.
+        Application.targetFrameRate = Application.isMobilePlatform ? 30 : 60; // Reduce el consumo en celulares.
         mejorTiempo = PlayerPrefs.GetFloat(ClaveRecord, 0f); // Lee el récord guardado; cero significa que todavía no hay uno.
         VolverAlMenu(); // El juego comienza mostrando el menú.
     }
@@ -93,12 +96,30 @@ public class JuegoMemoria : MonoBehaviour
         menu.SetActive(false);
         if (Application.platform == RuntimePlatform.Android)
         {
-            hud.SetActive(true);
-            tituloNivel.text = "BUSCA LOS TRES SELLOS";
-            contador.text = "SELLOS " + Completados + " / 3";
-            realidadAumentada.BuscarNivel();
+            modos.SetActive(true);
+            estadoAR.text = "ELIGE COMO QUIERES JUGAR";
+            botonAR.interactable = true;
         }
         else selector.SetActive(true);
+    }
+
+    public void SinCamara()
+    {
+        realidadAumentada.Detener();
+        realidadAumentada.usarAR = false;
+        modos.SetActive(false);
+        menu.SetActive(false);
+        selector.SetActive(true);
+    }
+
+    public void IniciarExploracionAR()
+    {
+        modos.SetActive(false);
+        realidadAumentada.usarAR = true;
+        hud.SetActive(true);
+        tituloNivel.text = "BUSCA LOS TRES SELLOS";
+        contador.text = "SELLOS " + Completados + " / 3";
+        realidadAumentada.BuscarNivel();
     }
 
     public void Cripta() => ElegirNivel(0);
@@ -279,6 +300,7 @@ public class JuegoMemoria : MonoBehaviour
         ActualizarRecord(); // Muestra el récord incluso después de cancelar una partida.
         selector.SetActive(false);
         ActualizarProgreso();
+        modos.SetActive(false);
         menu.SetActive(true); // Muestra Jugar y Salir.
     }
 

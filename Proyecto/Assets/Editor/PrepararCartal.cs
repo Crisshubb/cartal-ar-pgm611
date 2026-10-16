@@ -94,9 +94,9 @@ public static class PrepararCartal
         pose.SetPoseSource(TrackedPoseDriver.DeviceType.GenericXRDevice, TrackedPoseDriver.TrackedPose.Center);
         pose.UseRelativeTransform = false;
         bool android = EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android;
-        manager.enabled = android;
-        background.enabled = android;
-        pose.enabled = android;
+        manager.enabled = false;
+        background.enabled = false;
+        pose.enabled = false;
         if (!android)
         {
             camera.orthographic = true;
@@ -192,9 +192,18 @@ public static class PrepararCartal
         Boton("SALIR", juego.menu.transform, new Vector2(0.20f, 0.07f), new Vector2(0.8f, 0.14f), juego.Salir);
         Texto("Ayuda", "EXPLORA / FIJA EL TABLERO / COMPLETA LOS SELLOS", juego.menu.transform, new Vector2(0.04f, 0.008f), new Vector2(0.96f, 0.058f), 23, new Color32(150, 143, 155, 255));
 
+        juego.modos = Panel("Modo de juego", ui.transform, Vector2.zero, Vector2.one, Fondo);
+        Texto("Titulo modos", "COMO QUIERES JUGAR", juego.modos.transform, new Vector2(0.05f, 0.78f), new Vector2(0.95f, 0.9f), 48, Oro);
+        juego.estadoAR = Texto("Estado AR", "ELIGE COMO QUIERES JUGAR", juego.modos.transform, new Vector2(0.07f, 0.59f), new Vector2(0.93f, 0.74f), 28, Color.white);
+        juego.botonAR = Boton("EXPLORAR CON CAMARA", juego.modos.transform, new Vector2(0.1f, 0.45f), new Vector2(0.9f, 0.54f), ar.ComprobarCompatibilidad);
+        Boton("JUGAR SIN CAMARA", juego.modos.transform, new Vector2(0.1f, 0.31f), new Vector2(0.9f, 0.40f), juego.SinCamara);
+        Texto("Ayuda modos", "EL MODO SIN CAMARA INCLUYE LOS TRES NIVELES.\nLA REALIDAD AUMENTADA REQUIERE UN CELULAR COMPATIBLE.", juego.modos.transform, new Vector2(0.07f, 0.15f), new Vector2(0.93f, 0.27f), 24, Oro);
+        Boton("VOLVER", juego.modos.transform, new Vector2(0.2f, 0.04f), new Vector2(0.8f, 0.11f), juego.VolverAlMenu);
+        juego.modos.SetActive(false);
+
         juego.selector = Panel("Elegir nivel", ui.transform, Vector2.zero, Vector2.one, Fondo);
         Texto("Titulo niveles", "LOS TRES SELLOS", juego.selector.transform, new Vector2(0.05f, 0.88f), new Vector2(0.95f, 0.97f), 52, Oro);
-        Texto("Ayuda niveles", "ELIGE UN LUGAR PARA JUGAR EN PC", juego.selector.transform, new Vector2(0.05f, 0.82f), new Vector2(0.95f, 0.88f), 25, Color.white);
+        Texto("Ayuda niveles", "ELIGE UN LUGAR PARA JUGAR", juego.selector.transform, new Vector2(0.05f, 0.82f), new Vector2(0.95f, 0.88f), 25, Color.white);
         juego.resumenNiveles = new Text[3];
         UnityEngine.Events.UnityAction[] acciones = { juego.Cripta, juego.Biblioteca, juego.Tesoro };
         for (int i = 0; i < 3; i++)
@@ -239,8 +248,10 @@ public static class PrepararCartal
         PlayerSettings.defaultInterfaceOrientation = UIOrientation.Portrait;
         PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel25;
         PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevelAuto;
-        PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
+        PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64 | AndroidArchitecture.ARMv7;
         PlayerSettings.SetScriptingBackend(NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
+        PlayerSettings.SetManagedStrippingLevel(NamedBuildTarget.Android, ManagedStrippingLevel.Low);
+        PlayerSettings.stripEngineCode = true;
         PlayerSettings.SetUseDefaultGraphicsAPIs(BuildTarget.Android, false);
         PlayerSettings.SetGraphicsAPIs(BuildTarget.Android, new[] { UnityEngine.Rendering.GraphicsDeviceType.OpenGLES3 });
         SerializedObject settings = new SerializedObject(AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/ProjectSettings.asset")[0]);
@@ -262,7 +273,7 @@ public static class PrepararCartal
             AssetDatabase.CreateAsset(proveedor, "Assets/Configuracion/ARCore.asset");
             ARCoreSettings.currentSettings = proveedor;
         }
-        proveedor.requirement = ARCoreSettings.Requirement.Required;
+        proveedor.requirement = ARCoreSettings.Requirement.Optional;
         proveedor.depth = ARCoreSettings.Requirement.Optional;
         EditorUtility.SetDirty(proveedor);
         XRGeneralSettingsPerBuildTarget perTarget = AssetDatabase.LoadAssetAtPath<XRGeneralSettingsPerBuildTarget>("Assets/Configuracion/XR.asset");
@@ -314,6 +325,9 @@ public static class PrepararCartal
             UnityEditor.Android.AndroidExternalToolsSettings.sdkRootPath = Environment.GetEnvironmentVariable("ANDROID_HOME");
         }
 #endif
+        EditorUserBuildSettings.buildAppBundle = false;
+        EditorUserBuildSettings.development = false;
+        EditorUserBuildSettings.allowDebugging = false;
         Preparar();
         Compilar(BuildTarget.Android, "../Entrega/Cartal.apk");
     }
@@ -321,7 +335,7 @@ public static class PrepararCartal
     private static void Compilar(BuildTarget target, string path)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path));
-        BuildReport report = BuildPipeline.BuildPlayer(new BuildPlayerOptions { scenes = new[] { Escena }, locationPathName = path, target = target, options = BuildOptions.None });
+        BuildReport report = BuildPipeline.BuildPlayer(new BuildPlayerOptions { scenes = new[] { Escena }, locationPathName = path, target = target, options = target == BuildTarget.Android ? BuildOptions.CompressWithLz4HC : BuildOptions.None });
         if (report.summary.result != BuildResult.Succeeded)
         {
             throw new Exception("Falló la compilación: " + report.summary.result);

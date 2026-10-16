@@ -10,7 +10,7 @@ Cada PNG identifica un lugar. No son códigos QR y no contienen enlaces.
 
 Imprimir cada imagen completa a **20 × 20 cm**, sin recortar, o mostrarla en otra pantalla. Evitar reflejos y mantener buena iluminación. Se puede jugar en cualquier orden.
 
-En Android, pulsar Jugar y enfocar una imagen. Una vez visible el tablero, pulsar **Fijar tablero** y esperar la confirmación antes de retirar la imagen. El anclaje dura durante esa partida; no se conserva su posición al cerrar la aplicación.
+En Android, pulsar Jugar, elegir Explorar con cámara y enfocar una imagen. Jugar sin cámara permite elegir niveles sin utilizar las imágenes. Una vez visible el tablero, pulsar **Fijar tablero** y esperar la confirmación antes de retirar la imagen. El anclaje dura durante esa partida; no se conserva su posición al cerrar la aplicación.
 
 **Reubicar** libera el anclaje y solicita la imagen del mismo nivel sin reiniciar las cartas ni el tiempo. Para cambiar de nivel, volver al menú y pulsar Jugar, o elegir Buscar otro sello después de ganar.
 
