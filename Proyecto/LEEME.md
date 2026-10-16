@@ -1,22 +1,25 @@
 # Cartal — memoria en realidad aumentada
 
-Proyecto independiente de Snake. Cartal **0.2.1**, en **Unity 6000.3.11f1**.
+Proyecto independiente de Snake. Cartal **0.3.0**, en **Unity 6000.3.11f1**.
 
 ## Abrir y jugar
 
 Abre esta carpeta como proyecto de Unity y abre `Assets/Escenas/Cartal.unity`.
-Presiona Play. En PC, Jugar muestra una vista previa del tablero que funciona con el mouse.
+Presiona Play. En PC, Jugar abre un selector de tres niveles que funcionan con el mouse.
 La vista PC sirve para comprobar las reglas; **la realidad aumentada funciona en Android**.
 
 En Android, abre Cartal, pulsa Jugar y concede el permiso de cámara.
-Enfoca `Cartal-Imagen-AR.png`, abierto en la pantalla de la laptop o impreso.
-Encuentra las cuatro parejas de las ocho cartas tocándolas sobre la imagen de cámara.
-Al ganar, la puerta gira y aparece Volver a jugar. Menú y el botón Atrás permiten volver al inicio.
+Enfoca una de las tres imágenes de `../Imagenes-AR/`, impresa o abierta en otra pantalla.
+La cripta tiene cuatro parejas; la biblioteca, seis; y el tesoro, ocho.
+Se pueden completar en cualquier orden. Al ganar se obtiene un sello y se puede repetir o buscar otro.
+Fijar tablero crea un anclaje AR: espera la confirmación y podrás retirar la imagen.
+Reubicar conserva la partida y permite colocar el tablero de nuevo al enfocar el mismo marcador.
+Menú y Atrás vuelven al inicio. El anclaje no se guarda entre sesiones.
 
 El cronómetro comienza al aparecer el tablero y se pausa si se pierde la referencia o la app pasa al fondo.
 Al ganar se guarda el menor tiempo en ese dispositivo mediante `PlayerPrefs`.
 Reiniciar o cerrar Cartal conserva el récord; una partida incompleta no lo reemplaza.
-Este récord corresponde al tablero de cuatro parejas y no requiere una cuenta ni un servidor.
+Cada nivel tiene su propio récord. Los tres sellos también se guardan localmente, sin cuenta ni servidor. El récord anterior de la cripta se conserva.
 
 El menú también incluye **Acerca de**: cuatro integrantes, roles, Ingeniería de Sistemas
 y Universidad Privada Franz Tamayo (UNIFRANZ), Sede La Paz, Bolivia.
@@ -29,8 +32,8 @@ Los roles son una distribución provisional autorizada por el grupo y pueden aju
 | Archivo | Responsabilidad |
 | --- | --- |
 | `Assets/Scripts/Carta.cs` | Guarda el identificador y el dibujo; revela, oculta y marca una pareja. |
-| `Assets/Scripts/JuegoMemoria.cs` | Mezcla ocho cartas, compara dos selecciones, cuenta parejas, gestiona menú, récord y victoria. |
-| `Assets/Scripts/MostrarTableroAR.cs` | Coloca el tablero en la imagen reconocida y detecta toques mediante un rayo. |
+| `Assets/Scripts/JuegoMemoria.cs` | Configura el nivel, mezcla cartas, compara parejas y guarda sellos y récords independientes. |
+| `Assets/Scripts/MostrarTableroAR.cs` | Reconoce el nivel, crea y libera anclajes AR y detecta toques mediante un rayo. |
 
 Las variables y las instrucciones de estos tres scripts tienen comentarios en español.
 AR Foundation y ARCore se encargan de reconocer la imagen y de seguir la cámara.
@@ -39,8 +42,8 @@ no se ejecutan en el celular y no son scripts adicionales de la mecánica.
 
 ## Imagen de referencia
 
-Solo hay una imagen: el dibujo de una cripta. No se imprimen las ocho cartas.
-La biblioteca `Assets/Configuracion/ImagenCartal.asset` contiene esa referencia.
+Hay tres imágenes independientes: cripta, biblioteca y tesoro. No se imprimen las cartas.
+La biblioteca `Assets/Configuracion/ImagenCartal.asset` contiene las tres referencias.
 El tamaño configurado es 20 × 20 cm. En pantalla conviene mostrarla aproximadamente a ese tamaño,
 sin recortarla, y mantener el celular mirando la pantalla de frente al comenzar.
 Para una impresión final, usa una hoja plana, papel mate y buena iluminación.
@@ -49,7 +52,7 @@ las parejas ya encontradas se conservan. No hay descarga de contenido durante la
 
 ## Arte editable
 
-`../Arte-LibreSprite/` contiene trece archivos `.ase` de una capa editables en LibreSprite.
+`../Arte-LibreSprite/` contiene treinta y tres archivos `.ase` de una capa editables en LibreSprite.
 Los dibujos se construyeron por código, píxel a píxel, y se entregan para que el grupo los revise y edite.
 No se afirma que fueron dibujados a mano en LibreSprite. Los PNG de `Assets/Arte` son sus exportaciones.
 La referencia tiene una exportación de mayor resolución, sin suavizar los píxeles.

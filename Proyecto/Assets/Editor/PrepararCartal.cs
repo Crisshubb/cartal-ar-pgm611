@@ -52,6 +52,11 @@ public static class PrepararCartal
         juego.realidadAumentada = ar;
         ar.juego = juego;
         juego.dibujos = new[] { Sprite("carta_calavera"), Sprite("carta_pocion"), Sprite("carta_espada"), Sprite("carta_pocion_azul") };
+        juego.niveles = new[] {
+            new NivelCartal { nombre = "La cripta", marcador = "Cartal", resultado = "CRIPTA ABIERTA", dibujos = juego.dibujos, fondo = Sprite("tablero"), premio = Sprite("puerta") },
+            new NivelCartal { nombre = "La biblioteca", marcador = "Biblioteca", resultado = "SELLO DEL CONOCIMIENTO", dibujos = new[] { Sprite("carta_libro"), Sprite("carta_pergamino"), Sprite("carta_pluma"), Sprite("carta_runa"), Sprite("carta_vela"), Sprite("carta_reloj") }, fondo = Sprite("tablero_biblioteca"), premio = Sprite("premio_biblioteca") },
+            new NivelCartal { nombre = "El tesoro", marcador = "Tesoro", resultado = "TESORO DESCUBIERTO", dibujos = new[] { Sprite("carta_llave"), Sprite("carta_moneda"), Sprite("carta_gema"), Sprite("carta_corona"), Sprite("carta_caliz"), Sprite("carta_anillo"), Sprite("carta_escudo"), Sprite("carta_amuleto") }, fondo = Sprite("tablero_tesoro"), premio = Sprite("premio_tesoro") }
+        };
         juego.sonido = control.AddComponent<AudioSource>();
         juego.sonido.playOnAwake = false;
         juego.sonido.volume = 0.5f;
@@ -112,18 +117,29 @@ public static class PrepararCartal
         library.SetSpecifySize(0, true);
         library.SetSize(0, new Vector2(0.20f, 0.20f));
         EditorUtility.SetDirty(library);
+        while (library.count < 3) library.Add();
+        for (int i = 1; i < 3; i++)
+        {
+            library.SetName(i, juego.niveles[i].marcador);
+            library.SetTexture(i, AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Arte/marcador_" + (i == 1 ? "biblioteca" : "tesoro") + ".png"), true);
+            library.SetSpecifySize(i, true);
+            library.SetSize(i, new Vector2(0.20f, 0.20f));
+        }
+        ar.anclas = originObject.AddComponent<ARAnchorManager>();
+        ar.anclas.enabled = false;
         ar.imagenes = originObject.AddComponent<ARTrackedImageManager>();
         ar.imagenes.referenceLibrary = library;
         ar.imagenes.enabled = false;
 
         GameObject tablero = new GameObject("Tablero de ocho cartas");
         ar.tablero = tablero;
-        Dibujar("Piedras del tablero", Sprite("tablero"), tablero.transform, Vector3.zero, -10);
+        juego.fondoTablero = Dibujar("Piedras del tablero", Sprite("tablero"), tablero.transform, Vector3.zero, -10);
         Dibujar("Interior de la salida", Sprite("salida"), tablero.transform, new Vector3(0, 1.40f, -0.02f), -2).transform.localScale = Vector3.one * 1.35f;
         GameObject bisagra = new GameObject("Bisagra de la puerta");
         bisagra.transform.SetParent(tablero.transform, false);
         bisagra.transform.localPosition = new Vector3(-0.43f, 1.40f, -0.06f);
-        Dibujar("Puerta", Sprite("puerta"), bisagra.transform, new Vector3(0.43f, 0, 0), -1).transform.localScale = Vector3.one * 1.35f;
+        juego.premio = Dibujar("Puerta", Sprite("puerta"), bisagra.transform, new Vector3(0.43f, 0, 0), -1);
+        juego.premio.transform.localScale = Vector3.one * 1.35f;
         juego.puerta = bisagra.transform;
         juego.cartas = new Carta[8];
         for (int i = 0; i < 8; i++)
@@ -152,26 +168,47 @@ public static class PrepararCartal
 
         juego.hud = Panel("Indicaciones", ui.transform, new Vector2(0, 0), Vector2.one, Color.clear);
         Panel("Fondo superior", juego.hud.transform, new Vector2(0, 0.84f), Vector2.one, new Color(0.08f, 0.07f, 0.10f, 0.95f));
-        Texto("Titulo pequeño", "CARTAL", juego.hud.transform, new Vector2(0.10f, 0.943f), new Vector2(0.9f, 0.987f), 52, Oro);
+        juego.tituloNivel = Texto("Titulo pequeño", "CARTAL", juego.hud.transform, new Vector2(0.10f, 0.943f), new Vector2(0.9f, 0.987f), 38, Oro);
         juego.contador = Texto("Contador", "PAREJAS  0 / 4", juego.hud.transform, new Vector2(0.04f, 0.905f), new Vector2(0.47f, 0.94f), 27, Color.white);
         juego.reloj = Texto("Cronometro", "TIEMPO 00:00.00", juego.hud.transform, new Vector2(0.50f, 0.905f), new Vector2(0.96f, 0.94f), 27, Color.white);
         juego.recordHud = Texto("Record HUD", "MEJOR --:--.--", juego.hud.transform, new Vector2(0.05f, 0.875f), new Vector2(0.95f, 0.902f), 24, Oro);
         juego.mensaje = Texto("Instruccion", "APUNTA A LA IMAGEN DE LA CRIPTA", juego.hud.transform, new Vector2(0.04f, 0.843f), new Vector2(0.96f, 0.874f), 23, Oro);
+        ar.fijar = Boton("FIJAR TABLERO", juego.hud.transform, new Vector2(0.04f, 0.10f), new Vector2(0.48f, 0.16f), ar.FijarTablero);
+        ar.reubicar = Boton("REUBICAR", juego.hud.transform, new Vector2(0.52f, 0.10f), new Vector2(0.96f, 0.16f), ar.Reubicar);
         Boton("MENU", juego.hud.transform, new Vector2(0.32f, 0.025f), new Vector2(0.68f, 0.085f), juego.VolverAlMenu);
 
         juego.menu = Panel("Menu inicial", ui.transform, Vector2.zero, Vector2.one, Fondo);
         Texto("Subtitulo superior", "MEMORIA  /  REALIDAD AUMENTADA", juego.menu.transform, new Vector2(0.07f, 0.88f), new Vector2(0.93f, 0.94f), 22, Oro);
         Texto("Nombre", "CARTAL", juego.menu.transform, new Vector2(0.06f, 0.77f), new Vector2(0.94f, 0.89f), 112, new Color32(236, 218, 185, 255));
-        Texto("Lema", "DESCUBRE LAS PAREJAS.\nABRE LA CRIPTA.", juego.menu.transform, new Vector2(0.08f, 0.69f), new Vector2(0.92f, 0.77f), 29, Oro);
+        Texto("Lema", "TRES LUGARES. TRES SELLOS.\nDESCUBRE LOS SECRETOS DE CARTAL.", juego.menu.transform, new Vector2(0.08f, 0.69f), new Vector2(0.92f, 0.77f), 29, Oro);
         GameObject ilustracion = Panel("Ilustracion", juego.menu.transform, new Vector2(0.23f, 0.40f), new Vector2(0.77f, 0.66f), Color.white);
         Image dibujo = ilustracion.GetComponent<Image>();
         dibujo.sprite = Sprite("marcador_cartal");
         dibujo.preserveAspect = true;
-        juego.recordMenu = Texto("Record menu", "MEJOR TIEMPO --:--.--", juego.menu.transform, new Vector2(0.04f, 0.337f), new Vector2(0.96f, 0.392f), 28, Oro);
-        Boton("JUGAR", juego.menu.transform, new Vector2(0.20f, 0.25f), new Vector2(0.8f, 0.32f), juego.Jugar);
+        juego.progreso = Texto("Progreso", "SELLOS RECUPERADOS 0 / 3", juego.menu.transform, new Vector2(0.04f, 0.35f), new Vector2(0.96f, 0.395f), 27, Oro);
+        juego.recordMenu = Texto("Record menu", "", juego.menu.transform, new Vector2(0.04f, 0.325f), new Vector2(0.96f, 0.35f), 18, Color.white);
+        Boton("JUGAR", juego.menu.transform, new Vector2(0.20f, 0.25f), new Vector2(0.8f, 0.32f), juego.Explorar);
         Boton("ACERCA DE", juego.menu.transform, new Vector2(0.20f, 0.16f), new Vector2(0.8f, 0.23f), juego.AbrirAcercaDe);
         Boton("SALIR", juego.menu.transform, new Vector2(0.20f, 0.07f), new Vector2(0.8f, 0.14f), juego.Salir);
-        Texto("Ayuda", "8 CARTAS  /  4 PAREJAS", juego.menu.transform, new Vector2(0.04f, 0.008f), new Vector2(0.96f, 0.058f), 23, new Color32(150, 143, 155, 255));
+        Texto("Ayuda", "EXPLORA / FIJA EL TABLERO / COMPLETA LOS SELLOS", juego.menu.transform, new Vector2(0.04f, 0.008f), new Vector2(0.96f, 0.058f), 23, new Color32(150, 143, 155, 255));
+
+        juego.selector = Panel("Elegir nivel", ui.transform, Vector2.zero, Vector2.one, Fondo);
+        Texto("Titulo niveles", "LOS TRES SELLOS", juego.selector.transform, new Vector2(0.05f, 0.88f), new Vector2(0.95f, 0.97f), 52, Oro);
+        Texto("Ayuda niveles", "ELIGE UN LUGAR PARA JUGAR EN PC", juego.selector.transform, new Vector2(0.05f, 0.82f), new Vector2(0.95f, 0.88f), 25, Color.white);
+        juego.resumenNiveles = new Text[3];
+        UnityEngine.Events.UnityAction[] acciones = { juego.Cripta, juego.Biblioteca, juego.Tesoro };
+        for (int i = 0; i < 3; i++)
+        {
+            float y = 0.59f - i * 0.22f;
+            GameObject tarjeta = Panel("Nivel " + (i + 1), juego.selector.transform, new Vector2(0.07f, y), new Vector2(0.93f, y + 0.19f), new Color32(40, 38, 50, 255));
+            Image imagen = Panel("Imagen del nivel", tarjeta.transform, new Vector2(0.025f, 0.08f), new Vector2(0.28f, 0.92f), Color.white).GetComponent<Image>();
+            imagen.sprite = Sprite("marcador_" + (i == 0 ? "cartal" : i == 1 ? "biblioteca" : "tesoro"));
+            imagen.preserveAspect = true;
+            Boton(juego.niveles[i].nombre.ToUpperInvariant(), tarjeta.transform, new Vector2(0.31f, 0.40f), new Vector2(0.96f, 0.89f), acciones[i]);
+            juego.resumenNiveles[i] = Texto("Estado", "", tarjeta.transform, new Vector2(0.29f, 0.06f), new Vector2(0.98f, 0.35f), 20, Oro);
+        }
+        Boton("VOLVER", juego.selector.transform, new Vector2(0.2f, 0.045f), new Vector2(0.8f, 0.11f), juego.VolverAlMenu);
+        juego.selector.SetActive(false);
 
         juego.acercaDe = Panel("Acerca de", ui.transform, Vector2.zero, Vector2.one, Fondo);
         Texto("Titulo acerca", "ACERCA DE CARTAL", juego.acercaDe.transform, new Vector2(0.05f, 0.89f), new Vector2(0.95f, 0.96f), 50, Oro);
@@ -182,18 +219,19 @@ public static class PrepararCartal
         Boton("VOLVER", juego.acercaDe.transform, new Vector2(0.20f, 0.075f), new Vector2(0.8f, 0.145f), juego.VolverAlMenu);
         juego.acercaDe.SetActive(false);
 
-        juego.victoria = Panel("Victoria", ui.transform, new Vector2(0.03f, 0.12f), new Vector2(0.97f, 0.39f), new Color(0.08f, 0.07f, 0.10f, 0.98f));
-        Texto("Resultado", "CRIPTA ABIERTA", juego.victoria.transform, new Vector2(0.04f, 0.75f), new Vector2(0.96f, 0.98f), 44, Oro);
-        juego.resumenVictoria = Texto("Tiempo final", "TIEMPO 00:00.00", juego.victoria.transform, new Vector2(0.04f, 0.43f), new Vector2(0.96f, 0.75f), 27, Color.white);
-        Boton("VOLVER A JUGAR", juego.victoria.transform, new Vector2(0.07f, 0.09f), new Vector2(0.93f, 0.39f), juego.Jugar);
+        juego.victoria = Panel("Victoria", ui.transform, new Vector2(0.03f, 0.18f), new Vector2(0.97f, 0.53f), new Color(0.08f, 0.07f, 0.10f, 0.98f));
+        juego.tituloVictoria = Texto("Resultado", "CRIPTA ABIERTA", juego.victoria.transform, new Vector2(0.04f, 0.75f), new Vector2(0.96f, 0.98f), 32, Oro);
+        juego.resumenVictoria = Texto("Tiempo final", "TIEMPO 00:00.00", juego.victoria.transform, new Vector2(0.04f, 0.49f), new Vector2(0.96f, 0.75f), 27, Color.white);
+        Boton("VOLVER A JUGAR", juego.victoria.transform, new Vector2(0.07f, 0.28f), new Vector2(0.93f, 0.46f), juego.Jugar);
+        Boton("BUSCAR OTRO SELLO", juego.victoria.transform, new Vector2(0.07f, 0.05f), new Vector2(0.93f, 0.23f), juego.Explorar);
         juego.victoria.SetActive(false);
         juego.hud.SetActive(false);
         tablero.SetActive(false);
 
         PlayerSettings.companyName = "PGM611";
         PlayerSettings.productName = "Cartal";
-        PlayerSettings.bundleVersion = "0.2.1";
-        PlayerSettings.Android.bundleVersionCode = 3;
+        PlayerSettings.bundleVersion = "0.3.0";
+        PlayerSettings.Android.bundleVersionCode = 4;
         PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android, "com.pgm611.cartal");
         PlayerSettings.defaultScreenWidth = 1280;
         PlayerSettings.defaultScreenHeight = 900;
@@ -339,7 +377,7 @@ public static class PrepararCartal
         return label;
     }
 
-    private static void Boton(string titulo, Transform padre, Vector2 minimo, Vector2 maximo, UnityEngine.Events.UnityAction accion)
+    private static Button Boton(string titulo, Transform padre, Vector2 minimo, Vector2 maximo, UnityEngine.Events.UnityAction accion)
     {
         GameObject objeto = Panel(titulo, padre, minimo, maximo, new Color32(59, 49, 48, 255));
         Outline borde = objeto.AddComponent<Outline>();
@@ -351,6 +389,7 @@ public static class PrepararCartal
         colors.pressedColor = new Color32(104, 137, 115, 255);
         button.colors = colors;
         UnityEditor.Events.UnityEventTools.AddPersistentListener(button.onClick, accion);
-        Texto("Texto", titulo, objeto.transform, Vector2.zero, Vector2.one, 39, new Color32(236, 218, 185, 255));
+        Texto("Texto", titulo, objeto.transform, new Vector2(0.025f, 0.05f), new Vector2(0.975f, 0.95f), 28, new Color32(236, 218, 185, 255));
+        return button;
     }
 }

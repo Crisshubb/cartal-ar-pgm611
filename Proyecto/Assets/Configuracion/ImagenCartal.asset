@@ -27,3 +27,23 @@ MonoBehaviour:
     m_SpecifySize: 1
     m_Name: Cartal
     m_Texture: {fileID: 2800000, guid: 1d119b058e43c1746b1f17d035a9366a, type: 3}
+  - m_SerializedGuid:
+      m_GuidLow: 5436166196514834119
+      m_GuidHigh: 12511979144581166742
+    m_SerializedTextureGuid:
+      m_GuidLow: 10764976361043600148
+      m_GuidHigh: 10470928362040998024
+    m_Size: {x: 0.2, y: 0.2}
+    m_SpecifySize: 1
+    m_Name: Biblioteca
+    m_Texture: {fileID: 2800000, guid: 0f7b2314e0f7956488380430de355091, type: 3}
+  - m_SerializedGuid:
+      m_GuidLow: 4996976631068038881
+      m_GuidHigh: 4996181822667115667
+    m_SerializedTextureGuid:
+      m_GuidLow: 4333608918715069649
+      m_GuidHigh: 17002116824543181787
+    m_Size: {x: 0.2, y: 0.2}
+    m_SpecifySize: 1
+    m_Name: Tesoro
+    m_Texture: {fileID: 2800000, guid: e379f4d112593c24dbbb96bc2ba7f3eb, type: 3}

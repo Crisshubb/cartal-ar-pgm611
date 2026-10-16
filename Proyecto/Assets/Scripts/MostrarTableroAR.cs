@@ -1,134 +1,234 @@
-using UnityEngine; // Permite usar la cámara, los rayos y las transformaciones.
-using UnityEngine.EventSystems; // Permite evitar que un botón del menú seleccione una carta.
-using UnityEngine.XR.ARFoundation; // Proporciona la sesión AR y el reconocimiento de imágenes de Unity.
-using UnityEngine.XR.ARSubsystems; // Proporciona los estados de seguimiento de la imagen.
+using System;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
+using UnityEngine.XR.ARFoundation;
+using UnityEngine.XR.ARSubsystems;
 
-// Coloca el tablero sobre la imagen reconocida y convierte los toques en selección de cartas.
+// Reconoce el nivel y mantiene su tablero sobre la imagen o sobre un anclaje AR.
 public class MostrarTableroAR : MonoBehaviour
 {
-    public ARSession sesion; // Controla la sesión de realidad aumentada del celular.
-    public ARTrackedImageManager imagenes; // Componente de Unity que reconoce nuestra imagen de referencia.
-    public Camera camara; // Cámara que observa el tablero y genera el rayo de selección.
-    public GameObject tablero; // Contenedor de todas las cartas y de la puerta.
-    public JuegoMemoria juego; // Controlador de las reglas de memoria.
-    public bool escaneando; // Indica si debemos buscar la imagen y aceptar entrada.
-    private bool reconocido; // Recuerda si la imagen estuvo visible en el fotograma anterior.
-    private Transform contenedorOriginal; // Conserva el padre original del tablero al salir de AR.
+    public ARSession sesion;
+    public ARTrackedImageManager imagenes;
+    public ARAnchorManager anclas;
+    public Camera camara;
+    public GameObject tablero;
+    public JuegoMemoria juego;
+    public Button fijar, reubicar;
+    public bool escaneando;
+    public bool Fijado => ancla != null || fijadoPC;
+    public bool buscandoNivel { get; private set; }
+    private Transform contenedorOriginal;
+    private ARAnchor ancla;
+    private bool fijadoPC, creandoAncla, visibleAnterior;
+    private int operacion;
+    private TrackableId? imagenActual;
+    private bool Android => Application.platform == RuntimePlatform.Android;
 
-    private void Awake() // Unity lo llama antes de Start.
+    private void Awake() => contenedorOriginal = tablero.transform.parent;
+
+    public void BuscarNivel()
     {
-        contenedorOriginal = tablero.transform.parent; // Guarda dónde estaba el tablero al cargar la escena.
+        Detener();
+        buscandoNivel = true;
+        escaneando = true;
+        if (Android) { sesion.enabled = true; imagenes.enabled = true; anclas.enabled = true; }
+        juego.mensaje.text = "ENFOCA UNA DE LAS TRES IMAGENES";
+        juego.reloj.text = "TIEMPO --:--.--";
+        juego.recordHud.text = "CRIPTA / BIBLIOTECA / TESORO";
+        ActualizarBotones();
     }
 
-    public void Comenzar() // Prepara el tablero para una nueva partida.
+    public void Comenzar()
     {
-        escaneando = true; // Comienza a detectar la imagen y los toques.
-        reconocido = false; // Reinicia el estado de detección.
-        if (Application.platform == RuntimePlatform.Android) // El celular utiliza AR real.
+        // Reconocer un marcador no debe reiniciar la sesión que acaba de encontrarlo.
+        if (Android && buscandoNivel)
         {
-            tablero.SetActive(false); // Espera a reconocer la imagen antes de mostrar las cartas.
-            sesion.enabled = true; // Inicia la sesión AR; Unity solicita permiso de cámara si hace falta.
-            imagenes.enabled = true; // Activa el reconocimiento de la biblioteca de imágenes.
-            juego.mensaje.text = "APUNTA A LA IMAGEN DE LA CRIPTA"; // Explica cómo encontrar el tablero.
+            Liberar();
+            buscandoNivel = false;
         }
-        else // La PC permite comprobar la lógica sin cámara AR.
+        else Detener();
+        escaneando = true;
+        if (Android)
         {
-            camara.orthographic = true; // Usa una vista frontal sin perspectiva para comprobar las parejas.
-            camara.orthographicSize = 2.85f; // Encuadra el tablero completo en la vista de PC.
-            camara.transform.localPosition = new Vector3(0f, 0f, -8f); // Aleja la cámara del tablero incluso si el editor está configurado para Android.
-            camara.transform.localRotation = Quaternion.identity; // Orienta la cámara hacia las cartas.
-            tablero.transform.SetParent(contenedorOriginal, false); // Devuelve el tablero a la escena de prueba.
-            tablero.transform.localPosition = Vector3.zero; // Centra el tablero delante de la cámara de PC.
-            tablero.transform.localRotation = Quaternion.identity; // Orienta el tablero hacia la cámara de PC.
-            tablero.transform.localScale = Vector3.one; // Utiliza el tamaño de la vista previa.
-            tablero.SetActive(true); // Muestra inmediatamente las cartas en PC.
-            juego.mensaje.text = "VISTA PC  -  PULSA DOS CARTAS"; // Identifica claramente el modo de prueba.
+            sesion.enabled = true;
+            imagenes.enabled = true;
+            anclas.enabled = true;
+            juego.mensaje.text = "ENFOCA: " + juego.niveles[juego.nivelActual].nombre.ToUpperInvariant();
         }
+        else
+        {
+            camara.orthographic = true;
+            camara.orthographicSize = 2.85f;
+            camara.transform.localPosition = new Vector3(0, 0, -8);
+            camara.transform.localRotation = Quaternion.identity;
+            tablero.transform.SetParent(contenedorOriginal, false);
+            tablero.transform.localPosition = Vector3.zero;
+            tablero.transform.localRotation = Quaternion.identity;
+            tablero.transform.localScale = Vector3.one;
+            tablero.SetActive(true);
+            juego.mensaje.text = "VISTA PC / ENCUENTRA LAS PAREJAS";
+        }
+        ActualizarBotones();
     }
 
-    public void Detener() // Desactiva el tablero al volver al menú.
+    private void QuitarAncla(ARAnchor valor)
     {
-        escaneando = false; // Deja de procesar detecciones y toques.
-        tablero.SetActive(false); // Oculta las cartas.
-        tablero.transform.SetParent(contenedorOriginal, false); // Evita conservar un padre de AR que pueda desaparecer.
-        imagenes.enabled = false; // Detiene la detección de imágenes.
-        sesion.enabled = false; // Detiene la sesión de realidad aumentada.
+        if (valor == null) return;
+        if (anclas != null && anclas.subsystem != null && anclas.subsystem.running && anclas.TryRemoveAnchor(valor)) return;
+        Destroy(valor.gameObject);
     }
 
-    private void Update() // Unity lo llama en cada fotograma.
+    private void Liberar()
     {
-        if (Input.GetKeyDown(KeyCode.Escape)) // El botón Atrás de Android y Escape de PC vuelven al menú.
+        operacion++; // Invalida una petición asíncrona que todavía esté pendiente.
+        creandoAncla = false;
+        tablero.transform.SetParent(contenedorOriginal, true);
+        QuitarAncla(ancla);
+        ancla = null;
+        fijadoPC = false;
+        imagenActual = null;
+    }
+
+    public void Detener()
+    {
+        escaneando = false;
+        buscandoNivel = false;
+        Liberar();
+        tablero.SetActive(false);
+        visibleAnterior = false;
+        imagenes.enabled = false;
+        anclas.enabled = false;
+        sesion.enabled = false;
+        ActualizarBotones();
+    }
+
+    public async void FijarTablero()
+    {
+        if (!escaneando || buscandoNivel || !tablero.activeSelf || Fijado || creandoAncla) return;
+        if (!Android)
         {
-            juego.VolverAlMenu(); // Cancela la partida actual.
+            fijadoPC = true;
+            juego.mensaje.text = "TABLERO FIJO / VISTA PC";
+            ActualizarBotones();
+            return;
         }
-        if (!escaneando) // En el menú no buscamos imágenes ni seleccionamos cartas.
+        if (ARSession.state != ARSessionState.SessionTracking) return;
+        int solicitud = ++operacion;
+        creandoAncla = true;
+        ActualizarBotones();
+        juego.mensaje.text = "FIJANDO TABLERO...";
+        try
         {
-            return; // Termina este fotograma.
-        }
-        if (Application.platform == RuntimePlatform.Android) // Actualiza el seguimiento solamente en el celular.
-        {
-            ActualizarImagen(); // Busca una imagen cuyo seguimiento sea fiable.
-        }
-        if (!tablero.activeSelf) // Si no vemos la referencia, tampoco se pueden seleccionar cartas.
-        {
-            return; // Espera a recuperar el seguimiento.
-        }
-        if (Input.touchCount > 0) // Comprueba si hay un dedo en la pantalla.
-        {
-            Touch toque = Input.GetTouch(0); // Lee únicamente el primer dedo.
-            if (toque.phase == TouchPhase.Began && !EventSystem.current.IsPointerOverGameObject(toque.fingerId)) // Acepta un toque nuevo que no sea sobre la interfaz.
+            // La pose se captura antes del await, sin depender de que el marcador siga visible.
+            Pose pose = new Pose(tablero.transform.position, tablero.transform.rotation);
+            Vector3 escala = tablero.transform.lossyScale;
+            var resultado = await anclas.TryAddAnchorAsync(pose);
+            if (this == null) return;
+            if (solicitud != operacion || !escaneando)
             {
-                SeleccionarEn(toque.position); // Envía la posición del toque al selector de cartas.
+                if (resultado.status.IsSuccess()) QuitarAncla(resultado.value);
+                return;
+            }
+            if (resultado.status.IsSuccess() && resultado.value != null)
+            {
+                ancla = resultado.value;
+                tablero.transform.SetParent(ancla.transform, false);
+                tablero.transform.localPosition = Vector3.zero;
+                tablero.transform.localRotation = Quaternion.identity;
+                Vector3 padre = ancla.transform.lossyScale;
+                tablero.transform.localScale = new Vector3(escala.x / padre.x, escala.y / padre.y, escala.z / padre.z);
+                juego.mensaje.text = "TABLERO FIJO / PUEDES RETIRAR LA IMAGEN";
+            }
+            else juego.mensaje.text = "NO SE PUDO FIJAR / ENFOCA Y REINTENTA";
+        }
+        catch (Exception error)
+        {
+            Debug.LogWarning("No se pudo crear el anclaje: " + error.Message);
+            if (this != null && solicitud == operacion && escaneando)
+                juego.mensaje.text = "NO SE PUDO FIJAR / REINTENTA";
+        }
+        finally
+        {
+            if (this != null && solicitud == operacion) { creandoAncla = false; ActualizarBotones(); }
+        }
+    }
+
+    public void Reubicar()
+    {
+        if (!escaneando || buscandoNivel) return;
+        Liberar();
+        if (Android) tablero.SetActive(false);
+        visibleAnterior = false;
+        juego.mensaje.text = Android ? "ENFOCA LA MISMA IMAGEN PARA REUBICAR" : "VISTA PC / TABLERO CENTRADO";
+        ActualizarBotones();
+    }
+
+    private void ActualizarBotones()
+    {
+        if (fijar != null) fijar.interactable = escaneando && !buscandoNivel && tablero.activeSelf && !Fijado && !creandoAncla;
+        if (reubicar != null) reubicar.interactable = escaneando && !buscandoNivel && !creandoAncla;
+    }
+
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Escape)) juego.VolverAlMenu();
+        if (!escaneando) return;
+        if (Android) ActualizarImagen();
+        ActualizarBotones();
+        if (!tablero.activeSelf || creandoAncla) return;
+        if (Input.touchCount > 0)
+        {
+            Touch toque = Input.GetTouch(0);
+            if (toque.phase == TouchPhase.Began && !EventSystem.current.IsPointerOverGameObject(toque.fingerId)) SeleccionarEn(toque.position);
+        }
+        else if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject()) SeleccionarEn(Input.mousePosition);
+    }
+
+    private void ActualizarImagen()
+    {
+        bool visible = false;
+        if (ancla != null)
+            visible = ancla.trackingState == TrackingState.Tracking && ARSession.state == ARSessionState.SessionTracking;
+        else if (!creandoAncla)
+        {
+            foreach (ARTrackedImage imagen in imagenes.trackables)
+            {
+                if (imagen.trackingState != TrackingState.Tracking) continue;
+                int nivel = Array.FindIndex(juego.niveles, n => n.marcador == imagen.referenceImage.name);
+                if (nivel < 0) continue;
+                if (buscandoNivel) juego.ElegirNivel(nivel);
+                if (nivel != juego.nivelActual || (imagenActual.HasValue && imagenActual.Value != imagen.trackableId)) continue;
+                imagenActual = imagen.trackableId;
+                // El tablero no pertenece al marcador: sobrevive si AR elimina su objeto.
+                tablero.transform.SetParent(contenedorOriginal, false);
+                tablero.transform.SetPositionAndRotation(imagen.transform.TransformPoint(new Vector3(0, 0.005f, 0)),
+                    imagen.transform.rotation * Quaternion.Euler(90, 0, 0));
+                tablero.transform.localScale = Vector3.one * (imagen.size.x / 3.84f);
+                visible = true;
+                break;
             }
         }
-        else if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject()) // Permite probar con un clic en PC.
+        else visible = tablero.activeSelf;
+        tablero.SetActive(visible);
+        if (!visible && ancla == null && !creandoAncla) imagenActual = null;
+        if (visible != visibleAnterior)
         {
-            SeleccionarEn(Input.mousePosition); // Usa la posición del mouse como punto de selección.
+            visibleAnterior = visible;
+            juego.mensaje.text = visible ? (Fijado ? "TABLERO FIJO / CONTINUA" : "ENCUENTRA LAS PAREJAS / PUEDES FIJAR EL TABLERO")
+                : (Fijado ? "MUEVE DESPACIO EL CELULAR PARA RECUPERAR EL ENTORNO" : "VUELVE A ENFOCAR LA IMAGEN");
         }
+        if (ARSession.state == ARSessionState.Unsupported) juego.mensaje.text = "ESTE DISPOSITIVO NO ADMITE AR";
+#if UNITY_ANDROID
+        else if (!UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.Camera))
+            juego.mensaje.text = "PERMITE LA CAMARA PARA ESCANEAR";
+#endif
     }
 
-    private void ActualizarImagen() // Consulta las imágenes que el componente de Unity está siguiendo.
+    public void SeleccionarEn(Vector2 posicion)
     {
-        bool visible = false; // Parte de la suposición de que la referencia no se ve.
-        foreach (ARTrackedImage imagen in imagenes.trackables) // Recorre las imágenes detectadas por Unity.
-        {
-            if (imagen.trackingState != TrackingState.Tracking || imagen.referenceImage.name != "Cartal") // Solo acepta nuestra referencia con seguimiento completo.
-            {
-                continue; // Omite una imagen que todavía no se sigue de forma fiable.
-            }
-            tablero.transform.SetParent(imagen.transform, false); // Vincula el tablero con la posición de la referencia.
-            tablero.transform.localPosition = new Vector3(0f, 0.005f, 0f); // Separa ligeramente el tablero de la superficie real.
-            tablero.transform.localRotation = Quaternion.Euler(90f, 0f, 0f); // Coloca los sprites sobre la imagen con la puerta arriba y las cartas debajo.
-            tablero.transform.localScale = Vector3.one * (imagen.size.x / 3.84f); // Ajusta el ancho del tablero al ancho reconocido de la imagen.
-            visible = true; // Indica que encontramos una referencia válida.
-            break; // Nuestra aplicación solo necesita un tablero.
-        }
-        tablero.SetActive(visible); // Muestra el tablero únicamente con seguimiento fiable.
-        if (visible != reconocido) // Actualiza el mensaje solo cuando cambia la detección.
-        {
-            reconocido = visible; // Guarda el nuevo estado de seguimiento.
-            juego.mensaje.text = visible ? "ENCUENTRA LAS CUATRO PAREJAS" : "VUELVE A ENFOCAR LA IMAGEN"; // Ayuda a recuperar la referencia.
-            Debug.Log(visible ? "CARTAL_IMAGEN_RECONOCIDA" : "CARTAL_IMAGEN_PERDIDA"); // Registra las detecciones para las pruebas.
-        }
-        if (ARSession.state == ARSessionState.Unsupported) // Comprueba si el dispositivo carece de soporte AR.
-        {
-            juego.mensaje.text = "ESTE DISPOSITIVO NO ADMITE AR"; // Explica por qué no puede aparecer el tablero.
-        }
-#if UNITY_ANDROID // Esta comprobación solo se compila para Android.
-        else if (!UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.Camera)) // Consulta si el usuario permitió utilizar la cámara.
-        {
-            juego.mensaje.text = "PERMITE LA CAMARA PARA ESCANEAR"; // Explica el permiso necesario sin ocultar el botón Menú.
-        }
-#endif // Termina la sección específica de Android.
-    }
-
-    public void SeleccionarEn(Vector2 posicion) // Convierte una posición de pantalla en una carta del mundo virtual.
-    {
-        Ray rayo = camara.ScreenPointToRay(posicion); // Genera un rayo desde la cámara hacia el punto tocado.
-        if (Physics.Raycast(rayo, out RaycastHit impacto, 20f)) // Comprueba si el rayo alcanza un objeto con collider.
-        {
-            Carta carta = impacto.collider.GetComponent<Carta>(); // Busca el componente Carta en el objeto alcanzado.
-            juego.Seleccionar(carta); // Entrega la carta al controlador, que valida la selección.
-        }
+        if (!escaneando || !tablero.activeSelf || creandoAncla) return;
+        if (Physics.Raycast(camara.ScreenPointToRay(posicion), out RaycastHit impacto, 20))
+            juego.Seleccionar(impacto.collider.GetComponent<Carta>());
     }
 }

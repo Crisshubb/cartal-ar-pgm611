@@ -20,10 +20,21 @@ public static class PruebasCartal
     private static bool habiaRecord;
     private static float recordAnterior;
     private static float tiempoPausado;
+    private static readonly string[] claves = { "Cartal.MejorTiempo.4Parejas", "Cartal.MejorTiempo.Nivel1", "Cartal.MejorTiempo.Nivel2", "Cartal.Sello.Cartal", "Cartal.Sello.Biblioteca", "Cartal.Sello.Tesoro" };
+    private static bool[] existian;
+    private static float[] valores;
+    private static bool opcionesAnteriores;
+    private static EnterPlayModeOptions modoAnterior;
 
     public static void Ejecutar()
     {
+        Directory.CreateDirectory("../Entrega");
         PrepararCartal.Preparar();
+        existian = claves.Select(PlayerPrefs.HasKey).ToArray();
+        valores = claves.Select((c, i) => i < 3 ? PlayerPrefs.GetFloat(c) : PlayerPrefs.GetInt(c)).ToArray();
+        foreach (string clave in claves) PlayerPrefs.DeleteKey(clave);
+        opcionesAnteriores = EditorSettings.enterPlayModeOptionsEnabled;
+        modoAnterior = EditorSettings.enterPlayModeOptions;
         habiaRecord = PlayerPrefs.HasKey(ClaveRecord);
         recordAnterior = PlayerPrefs.GetFloat(ClaveRecord);
         PlayerPrefs.DeleteKey(ClaveRecord);
@@ -31,7 +42,7 @@ public static class PruebasCartal
         EditorSettings.enterPlayModeOptionsEnabled = true;
         EditorSettings.enterPlayModeOptions = EnterPlayModeOptions.DisableDomainReload;
         paso = 0;
-        limite = EditorApplication.timeSinceStartup + 60;
+        limite = EditorApplication.timeSinceStartup + 100;
         siguiente = EditorApplication.timeSinceStartup + 1;
         EditorApplication.update += Avanzar;
         EditorApplication.EnterPlaymode();
@@ -57,7 +68,10 @@ public static class PruebasCartal
                     Exigir(juego.menu.activeSelf && !juego.acercaDe.activeSelf, "volver desde Acerca de");
                     Captura("Cartal-Menu.png");
                     juego.menu.GetComponentsInChildren<Button>().First(b => b.name == "JUGAR").onClick.Invoke();
-                    Exigir(juego.jugando && !juego.menu.activeSelf, "botón Jugar");
+                    Exigir(juego.selector.activeSelf && !juego.jugando, "Jugar abre selector PC");
+                    Captura("Cartal-Niveles.png");
+                    juego.selector.GetComponentsInChildren<Button>().First(b => b.name == "LA CRIPTA").onClick.Invoke();
+                    Exigir(juego.jugando && !juego.menu.activeSelf, "botón Cripta");
                     Exigir(juego.cartas.Length == 8 && juego.cartas.GroupBy(c => c.pareja).Count() == 4 && juego.cartas.GroupBy(c => c.pareja).All(g => g.Count() == 2), "ocho cartas y cuatro parejas");
                     Exigir(juego.cartas.Count(c => c.frente.name == "carta_pocion_azul") == 2, "pareja de pociones azules");
                     Captura("Cartal-Tablero.png");
@@ -148,6 +162,51 @@ public static class PruebasCartal
                     Exigir(juego.jugando && juego.cartas.All(c => !c.revelada) && !juego.resolviendo, "cancelar espera al regresar al menú");
                     juego.VolverAlMenu();
                     Exigir(juego.menu.activeSelf && !juego.realidadAumentada.tablero.activeSelf, "regresar al menú");
+                    juego.Tesoro();
+                    Exigir(juego.nivelActual == 2 && juego.TotalParejas == 8 && juego.cartas.Length == 16, "tesoro accesible sin biblioteca");
+                    Exigir(juego.cartas.GroupBy(c => c.pareja).All(g => g.Count() == 2), "ocho parejas únicas del tesoro");
+                    Captura("Cartal-Tesoro.png");
+                    Captura("Cartal-Tesoro-Vertical.png", 1080, 1920);
+                    Tocar(juego.cartas[0]);
+                    juego.realidadAumentada.FijarTablero();
+                    Exigir(juego.realidadAumentada.Fijado && !juego.realidadAumentada.fijar.interactable, "fijar tablero en vista PC");
+                    juego.realidadAumentada.Reubicar();
+                    Exigir(!juego.realidadAumentada.Fijado && juego.cartas[0].revelada, "reubicar conserva selección");
+                    juego.Jugar();
+                    juego.tiempoPartida = 25;
+                    CompletarParejas();
+                    Exigir(juego.Completados == 2 && PlayerPrefs.GetFloat(juego.ClaveTiempo(2)) == 25, "guardar segundo sello y tiempo independiente");
+                    siguiente = EditorApplication.timeSinceStartup + 1.4;
+                    paso++;
+                    break;
+                case 9:
+                    Exigir(juego.victoria.activeSelf, "victoria tesoro");
+                    Captura("Cartal-Tesoro-Victoria.png");
+                    juego.Explorar();
+                    juego.Biblioteca();
+                    Exigir(juego.TotalParejas == 6 && juego.cartas.Length == 12 && juego.cartas.GroupBy(c => c.pareja).All(g => g.Count() == 2), "doce cartas y seis parejas biblioteca");
+                    Exigir(juego.realidadAumentada.tablero.GetComponentsInChildren<Carta>().Length == 12, "cartas sobrantes desactivadas");
+                    Captura("Cartal-Biblioteca.png");
+                    juego.tiempoPartida = 18;
+                    CompletarParejas();
+                    Exigir(juego.Completados == 3 && juego.tituloVictoria.text.Contains("TRES SELLOS"), "final de tres sellos");
+                    Exigir(PlayerPrefs.GetFloat(ClaveRecord) == 8.25f && PlayerPrefs.GetFloat(juego.ClaveTiempo(2)) == 25, "récords no se mezclan");
+                    siguiente = EditorApplication.timeSinceStartup + 1.4;
+                    paso++;
+                    break;
+                case 10:
+                    Exigir(juego.premio.color.g > juego.premio.color.r, "libro iluminado al ganar");
+                    Captura("Cartal-Tres-Sellos.png");
+                    juego.VolverAlMenu();
+                    juego.ActualizarProgreso();
+                    Exigir(juego.Completados == 3 && juego.resumenNiveles.All(t => t.text.Contains("SELLO RECUPERADO")), "progreso cargado desde almacenamiento");
+                    juego.Cripta();
+                    Exigir(juego.cartas.Length == 8 && juego.realidadAumentada.tablero.GetComponentsInChildren<Carta>().Length == 8, "volver a cripta después de otros niveles");
+                    Exigir(!juego.realidadAumentada.Fijado && juego.cartas.All(c => !c.revelada), "nueva partida limpia anclaje y cartas");
+                    juego.realidadAumentada.FijarTablero();
+                    juego.VolverAlMenu();
+                    Exigir(!juego.realidadAumentada.Fijado && !juego.realidadAumentada.escaneando, "menú libera tablero");
+                    Exigir(juego.realidadAumentada.imagenes.referenceLibrary.count == 3, "biblioteca AR contiene tres marcadores");
                     Debug.Log("CARTAL_PRUEBAS_OK Unity=" + Application.unityVersion);
                     RestaurarRecord();
                     EditorApplication.update -= Avanzar;
@@ -178,8 +237,14 @@ public static class PruebasCartal
 
     private static void RestaurarRecord()
     {
-        if (habiaRecord) PlayerPrefs.SetFloat(ClaveRecord, recordAnterior);
-        else PlayerPrefs.DeleteKey(ClaveRecord);
+        for (int i = 0; i < claves.Length; i++)
+        {
+            if (!existian[i]) PlayerPrefs.DeleteKey(claves[i]);
+            else if (i < 3) PlayerPrefs.SetFloat(claves[i], valores[i]);
+            else PlayerPrefs.SetInt(claves[i], (int)valores[i]);
+        }
+        EditorSettings.enterPlayModeOptionsEnabled = opcionesAnteriores;
+        EditorSettings.enterPlayModeOptions = modoAnterior;
         PlayerPrefs.Save();
     }
 
@@ -195,14 +260,14 @@ public static class PruebasCartal
         Debug.Log("CARTAL_CHECK_OK " + caso);
     }
 
-    private static void Captura(string nombre)
+    private static void Captura(string nombre, int ancho = 1280, int alto = 900)
     {
         Camera camara = juego.realidadAumentada.camara;
         Canvas canvas = UnityEngine.Object.FindFirstObjectByType<Canvas>();
-        RenderTexture rt = new RenderTexture(1280, 900, 24);
+        RenderTexture rt = new RenderTexture(ancho, alto, 24);
         float aspecto = camara.aspect;
         camara.targetTexture = rt;
-        camara.aspect = 1280f / 900f;
+        camara.aspect = (float)ancho / alto;
         canvas.renderMode = RenderMode.ScreenSpaceCamera;
         canvas.sortingOrder = 100;
         canvas.worldCamera = camara;
@@ -210,8 +275,8 @@ public static class PruebasCartal
         Canvas.ForceUpdateCanvases();
         camara.Render();
         RenderTexture.active = rt;
-        Texture2D captura = new Texture2D(1280, 900, TextureFormat.RGB24, false);
-        captura.ReadPixels(new Rect(0, 0, 1280, 900), 0, 0);
+        Texture2D captura = new Texture2D(ancho, alto, TextureFormat.RGB24, false);
+        captura.ReadPixels(new Rect(0, 0, ancho, alto), 0, 0);
         captura.Apply();
         File.WriteAllBytes("../Entrega/" + nombre, captura.EncodeToPNG());
         RenderTexture.active = null;
